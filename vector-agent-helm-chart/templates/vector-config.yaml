@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .Release.Name }}-config"
+data:
+  vector.toml: |-
+    # Vector の設定ファイル
+    [sources.kubernetes_logs]
+    type = "kubernetes_logs"
+    ignore_older_secs = 1800
+    max_read_bytes = 10485760
+    max_line_bytes = 1048576
+    read_from = "end"
+    timezone = "Asia/Tokyo"
+    kube_config_file = "/mnt/vector/k3s.yaml"
+    extra_namespace_label_selector = """
+    kubernetes.io/metadata.name!=logging,
+    kubernetes.io/metadata.name!=default,
+    kubernetes.io/metadata.name!=kube-system
+    """
+
+    [transforms.transform_logs]
+    type = "remap"
+    inputs = [ "kubernetes_logs" ]
+    source = """
+    .pod = .kubernetes.pod_name
+    .namespace = .kubernetes.pod_namespace
+    .container = .kubernetes.container_name
+    del(.file)
+    del(.kubernetes)
+    del(.timestamp_end)
+    del(.source_type)
+    del(.tsNs)
+    del(.ts)
+    del(.stream)
+    """
+    timezone = "Asia/Tokyo"
+
+    [sinks.loki]
+    type = "loki"
+    inputs = ["transform_logs"]
+    compression = "snappy"
+    endpoint = "{{ .Values.loki.address }}"
+    path = "/loki/api/v1/push"
+    out_of_order_action = "drop"
+    remove_timestamp = false
+
+    [sinks.loki.encoding]
+    codec = "json"
+    timestamp_format = "rfc3339"
+
+    [sinks.loki.labels]
+    job = "k3s-logs"

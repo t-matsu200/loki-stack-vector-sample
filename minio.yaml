@@ -1,0 +1,70 @@
+# minio-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-storage-minio
+  namespace: logging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-storage-minio
+  template:
+    metadata:
+      labels:
+        app: log-storage-minio
+    spec:
+      containers:
+        - name: log-storage-minio
+          image: docker.io/minio/minio:RELEASE.2023-03-24T21-41-23Z
+          command:
+            - /usr/bin/docker-entrypoint.sh
+          args:
+            - server
+            - --address
+            - :9000
+            - --console-address
+            - :9090
+            - /data
+          ports:
+            - name: minio-http
+              containerPort: 9000
+            - name: minio-console
+              containerPort: 9090
+          env:
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: log-storage-secret
+                  key: access_key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: log-storage-secret
+                  key: secret_key
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+      volumes:
+        - name: minio-data
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: log-storage-minio
+  namespace: logging
+spec:
+  selector:
+    app: log-storage-minio
+  ports:
+    - name: minio-http
+      port: 9000
+      targetPort: 9000
+      nodePort: 31900
+    - name: minio-console
+      port: 9090
+      targetPort: 9090
+      nodePort: 31990
+  type: NodePort

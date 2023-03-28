@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: "{{ .Release.Name }}-daemonset"
+spec:
+  selector:
+    matchLabels:
+      app: "{{ .Release.Name }}-app"
+  template:
+    metadata:
+      labels:
+        app: "{{ .Release.Name }}-app"
+    spec:
+      serviceAccountName: "{{ .Release.Name }}-vector-sa"
+      containers:
+      - name: "{{ .Release.Name }}-app"
+        image: "{{ .Values.vector.image.repository }}:{{ .Values.vector.image.tag }}"
+        args: ["--config", "/etc/vector/vector.toml"]
+        volumeMounts:
+          - name: config-volume
+            mountPath: /etc/vector
+            readOnly: true
+          - name: k3s-config
+            mountPath: /mnt/vector
+            readOnly: true
+          - name: pod-logs
+            mountPath: /var/log/pods
+            readOnly: true
+        env:
+          - name: TZ
+            value: Asia/Tokyo
+          - name: VECTOR_SELF_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: VECTOR_CONFIG_PATH
+            value: /etc/vector/vector.toml
+        ports:
+          - containerPort: 8686
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "100m"
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+      volumes:
+        - name: config-volume
+          configMap:
+            name: "{{ .Release.Name }}-config"
+        - name: k3s-config
+          secret:
+            secretName: k3s-config
+        - name: pod-logs
+          hostPath:
+            path: /var/log/pods
+      tolerations:
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"

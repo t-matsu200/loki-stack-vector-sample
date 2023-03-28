@@ -1,0 +1,25 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: "{{ .Release.Name }}-vector-clusterrole"
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "nodes", "namespaces", "deployments", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["daemonsets"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: "{{ .Release.Name }}-vector-rolebinding"
+subjects:
+- kind: ServiceAccount
+  name: "{{ .Release.Name }}-vector-sa"
+  namespace: {{ .Values.namespace | quote }}
+roleRef:
+  kind: ClusterRole
+  name: "{{ .Release.Name }}-vector-clusterrole"
+  apiGroup: rbac.authorization.k8s.io
