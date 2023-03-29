@@ -16,6 +16,18 @@ spec:
       - name: "{{ .Release.Name }}-app"
         image: "{{ .Values.vector.image.repository }}:{{ .Values.vector.image.tag }}"
         args: ["--config", "/etc/vector/vector.toml"]
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8686
+          initialDelaySeconds: 60
+          periodSeconds: 60
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8686
+          initialDelaySeconds: 60
+          periodSeconds: 60
         volumeMounts:
           - name: config-volume
             mountPath: /etc/vector

@@ -2,6 +2,8 @@ vector:
   image:
     repository: "docker.io/timberio/vector"
     tag: "0.28.1-alpine"
+  service:
+    type: ClusterIP
 
 loki:
   address: "http://loki-stack.logging.svc:3100"

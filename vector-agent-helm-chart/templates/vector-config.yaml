@@ -5,6 +5,10 @@ metadata:
 data:
   vector.toml: |-
     # Vector の設定ファイル
+    [api]
+    enabled = true
+    address = "0.0.0.0:8686"
+
     [sources.kubernetes_logs]
     type = "kubernetes_logs"
     ignore_older_secs = 1800

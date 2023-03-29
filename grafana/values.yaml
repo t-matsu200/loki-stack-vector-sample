@@ -1,0 +1,13 @@
+service:
+  type: NodePort
+  nodePort: 32300
+image:
+  repository: docker.io/grafana/grafana
+  tag: 9.2.15
+persistence:
+  type: pvc
+  enabled: true
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  size: 1Gi

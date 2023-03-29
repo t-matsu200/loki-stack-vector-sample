@@ -9,3 +9,4 @@ spec:
   - name: http
     port: 8686
     targetPort: 8686
+  type: "{{ .Values.vector.service.type }}"

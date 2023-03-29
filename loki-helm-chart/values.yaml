@@ -31,11 +31,25 @@ loki:
         s3forcepathstyle: true
         access_key_id: xxxxx
         secret_access_key: xxxxx
+    ingester:
+      lifecycler:
+        address: 127.0.0.1
+        ring:
+          kvstore:
+            store: inmemory
+          replication_factor: 1
+        final_sleep: 0s
+      chunk_idle_period: 5m
+      chunk_retain_period: 30m
+    distributor:
+      ring:
+        kvstore:
+          store: inmemory
     table_manager:
       retention_deletes_enabled: true
       retention_period: 720h
     compactor:
-      working_directory: /data/compactor
+      working_directory: /data/loki/compactor
       shared_store: s3
       compaction_interval: 5m
   service:

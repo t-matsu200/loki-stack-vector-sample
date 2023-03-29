@@ -1,0 +1,175 @@
+loki:
+  auth_enabled: false
+  persistence:
+    enabled: false
+    storageClassName: "local-path"
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+  server:
+    http_listen_port: 3100
+  service:
+    type: ClusterIP
+  storage:
+    type: s3
+  resources:
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+  config: |
+    common:
+      compactor_address: http://{{ include "loki.compactorFullname" . }}:3100
+    distributor:
+      ring:
+        kvstore:
+          store: memberlist
+    memberlist:
+      join_members:
+        - {{ include "loki.fullname" . }}-memberlist
+    ingester:
+      lifecycler:
+        ring:
+          kvstore:
+            store: memberlist
+          replication_factor: 1
+      chunk_idle_period: 30m
+      chunk_block_size: 262144
+      chunk_encoding: snappy
+      chunk_retain_period: 1m
+      max_transfer_retries: 0
+      wal:
+        dir: /var/loki/wal
+    schema_config:
+      configs:
+      - from: "2023-03-26"
+        store: boltdb-shipper
+        object_store: aws
+        schema: v11
+        index:
+          prefix: loki_index_
+          period: 24h
+    storage_config:
+      boltdb_shipper:
+        active_index_directory: /data/loki/boltdb-shipper-active
+        cache_location: /data/loki/boltdb-shipper-cache
+        cache_ttl: 24h
+        shared_store: s3
+      aws:
+        s3: http://log-storage-minio.logging.svc.cluster.local:9000/log-storage
+        s3forcepathstyle: true
+        access_key_id: xxxxx
+        secret_access_key: xxxxx
+    table_manager:
+      retention_deletes_enabled: true
+      retention_period: 720h
+    compactor:
+      working_directory: /data/loki/compactor
+      shared_store: s3
+      compaction_interval: 5m
+
+ingester:
+  enabled: true
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+  extraVolumes:
+    - name: data
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: data
+      mountPath: /var/loki
+
+querier:
+  enabled: true
+  replicas: 1
+  resources:
+    limits:
+      cpu: "100m"
+      memory: "128Mi"
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+  config:
+    query_range:
+      align_queries_with_step: true
+      cache_results: true
+      max_concurrent: 50
+      split_queries: true
+  extraVolumes:
+    - name: data
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: data
+      mountPath: /var/loki
+
+queryFrontend:
+  enabled: true
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "100m"
+      memory: "128Mi"
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+  maxResultCacheSize: 5000
+  queryRangeOverhead: 2m
+
+compactor:
+  enabled: true
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+  compaction:
+    retentionDeleteDelay: 72h
+    retentionResolutionRaw: 5m
+    retentionResolution5m: 30m
+    retentionResolution1h: 1h
+  working_directory: /data/loki/compactor
+  shared_store: s3
+  compaction_interval: 5m
+
+distributor:
+  enabled: true
+  replicas: 1
+  resources:
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+  storage:
+    type: s3
+    config:
+      bucketnames: log-storage
+      endpoint: http://log-storage-minio.logging.svc.cluster.local:9000
+      access_key_id: xxxxx
+      secret_access_key: xxxxx
+      insecure: true
+      signature_version2: true
+      s3forcepathstyle: true
+
+tableManager:
+  enabled: true
+  replicas: 1
+  resources:
+    limits:
+      cpu: "100m"
+      memory: "128Mi"
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
